@@ -8,21 +8,27 @@ fi
 
 # associative array for the platforms that will be verified in build_main_platforms()
 # this will be eval'd in the functions below because arrays can't be exported
-export MAIN_PLATFORMS='declare -A main_platforms=( [uno]="arduino:avr:uno" [due]="arduino:sam:arduino_due_x" [featherzero]="adafruit:samd:adafruit_feather_m0" [esp8266]="esp8266:esp8266:huzzah" [leonardo]="arduino:avr:leonardo" [mega]="arduino:avr:mega" [simblee]="Simblee:Simblee:Simblee" )'
+export MAIN_PLATFORMS='declare -A main_platforms=( [uno]="arduino:avr:uno" [due]="arduino:sam:arduino_due_x" [featherzero]="adafruit:samd:adafruit_feather_m0" [esp8266]="esp8266:esp8266:huzzah:FlashSize=4M3M,CpuFrequency=80" [leonardo]="arduino:avr:leonardo" [simblee]="Simblee:Simblee:Simblee" )'
 
 # associative array for other platforms that can be called explicitly in .travis.yml configs
 # this will be eval'd in the functions below because arrays can't be exported
-export AUX_PLATFORMS='declare -A aux_platforms=( [trinket]="adafruit:avr:trinket3" [gemma]="arduino:avr:gemma" [micro]="arduino:avr:micro" [fio]="arduino:avr:fio"  [rtl8195a]="realtek:ameba:ameba_rtl8195a" [rtl8710]="realtek:ameba:ameba_rtl8710" [zero]="arduino:samd:zero" )'
+export AUX_PLATFORMS='declare -A aux_platforms=( [trinket]="adafruit:avr:trinket5" [gemma]="arduino:avr:gemma" [mega]="arduino:avr:mega:cpu=atmega2560" )'
+
+export CPLAY_PLATFORMS='declare -A cplay_platforms=( [cplayClassic]="arduino:avr:circuitplay32u4cat" [cplayExpress]="arduino:samd:adafruit_circuitplayground_m0" )'
+
+export SAMD_PLATFORMS='declare -A samd_platforms=( [zero]="arduino:samd:arduino_zero_native", [cplayExpress]="arduino:samd:adafruit_circuitplayground_m0" )'
+
+export REALTEK_PLATFORMS='declare -A realtek_platforms=( [rtl8195a]="realtek:ameba:ameba_rtl8195a" [rtl8710]="realtek:ameba:ameba_rtl8710" [zero]="arduino:samd:zero" )'
 
 # make display available for arduino CLI
 /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_1.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :1 -ac -screen 0 1280x1024x16
 sleep 3
 export DISPLAY=:1.0
 
-# download and install arduino 1.6.5
-wget https://downloads.arduino.cc/arduino-1.6.12-linux64.tar.xz
-tar xf arduino-1.6.12-linux64.tar.xz
-mv arduino-1.6.12 $HOME/arduino_ide
+# download and install arduino 1.8.5
+wget --quiet https://downloads.arduino.cc/arduino-1.8.5-linux64.tar.xz
+tar xf arduino-1.8.5-linux64.tar.xz
+mv arduino-1.8.5 $HOME/arduino_ide
 
 # move this library to the arduino libraries folder
 ln -s $PWD $HOME/arduino_ide/libraries/Marzogh_Test_Library
@@ -40,12 +46,20 @@ echo -n "ADD PACKAGE INDEX: "
 DEPENDENCY_OUTPUT=$(arduino --pref "boardsmanager.additional.urls=https://adafruit.github.io/arduino-board-index/package_adafruit_index.json,http://arduino.esp8266.com/stable/package_esp8266com_index.json,https://github.com/Ameba8195/Arduino/raw/master/release/package_realtek.com_ameba_index.json,https://www.simblee.com/package_simblee166_index.json" --save-prefs 2>&1)
 if [ $? -ne 0 ]; then echo -e "\xe2\x9c\x96"; else echo -e "\xe2\x9c\x93"; fi
 
-echo -n "ADAFRUIT AVR: "
-DEPENDENCY_OUTPUT=$(arduino --install-boards adafruit:avr 2>&1)
+echo -n "DUE: "
+DEPENDENCY_OUTPUT=$(arduino --install-boards arduino:sam 2>&1)
 if [ $? -ne 0 ]; then echo -e "\xe2\x9c\x96"; else echo -e "\xe2\x9c\x93"; fi
 
 echo -n "ZERO: "
 DEPENDENCY_OUTPUT=$(arduino --install-boards arduino:samd 2>&1)
+if [ $? -ne 0 ]; then echo -e "\xe2\x9c\x96"; else echo -e "\xe2\x9c\x93"; fi
+
+echo -n "ESP8266: "
+DEPENDENCY_OUTPUT=$(arduino --install-boards esp8266:esp8266 2>&1)
+if [ $? -ne 0 ]; then echo -e "\xe2\x9c\x96"; else echo -e "\xe2\x9c\x93"; fi
+
+echo -n "ADAFRUIT AVR: "
+DEPENDENCY_OUTPUT=$(arduino --install-boards adafruit:avr 2>&1)
 if [ $? -ne 0 ]; then echo -e "\xe2\x9c\x96"; else echo -e "\xe2\x9c\x93"; fi
 
 echo -n "ADAFRUIT SAMD: "
@@ -58,14 +72,6 @@ if [ $? -ne 0 ]; then echo -e "\xe2\x9c\x96"; else echo -e "\xe2\x9c\x93"; fi
 
 echo -n "AMEBA: "
 DEPENDENCY_OUTPUT=$(arduino --install-boards realtek:ameba 2>&1)
-if [ $? -ne 0 ]; then echo -e "\xe2\x9c\x96"; else echo -e "\xe2\x9c\x93"; fi
-
-echo -n "DUE: "
-DEPENDENCY_OUTPUT=$(arduino --install-boards arduino:sam 2>&1)
-if [ $? -ne 0 ]; then echo -e "\xe2\x9c\x96"; else echo -e "\xe2\x9c\x93"; fi
-
-echo -n "ESP8266: "
-DEPENDENCY_OUTPUT=$(arduino --install-boards esp8266:esp8266 2>&1)
 if [ $? -ne 0 ]; then echo -e "\xe2\x9c\x96"; else echo -e "\xe2\x9c\x93"; fi
 
 # install random lib so the arduino IDE grabs a new library index
@@ -95,6 +101,8 @@ function build_platform()
   # arrays can't be exported, so we have to eval
   eval $MAIN_PLATFORMS
   eval $AUX_PLATFORMS
+  eval $CPLAY_PLATFORMS
+  eval $REALTEK_PLATFORMS
 
   # reset platform json var
   PLATFORM_JSON=""
@@ -308,6 +316,102 @@ function build_main_platforms()
     # is this the last platform in the loop
     local last_platform=0
     if [ "$last" == "${main_platforms[$p_key]}" ]; then
+      last_platform=1
+    fi
+
+    # build all examples for this platform
+    build_platform $p_key
+
+    # check if build failed
+    if [ $? -ne 0 ]; then
+      platforms_json="${platforms_json}$(json_platform $p_key 0 "$PLATFORM_JSON" $last_platform)"
+      exit_code=1
+    else
+      platforms_json="${platforms_json}$(json_platform $p_key 1 "$PLATFORM_JSON" $last_platform)"
+    fi
+
+  done
+
+  # exit code is opposite of json build status
+  if [ $exit_code -eq 0 ]; then
+    json_main_platforms 1 "$platforms_json"
+  else
+    json_main_platforms 0 "$platforms_json"
+  fi
+
+  return $exit_code
+
+}
+
+function build_cplay_platforms()
+{
+
+  # arrays can't be exported, so we have to eval
+  eval $CPLAY_PLATFORMS
+
+  # track the build status all platforms
+  local exit_code=0
+
+  # var to hold platforms
+  local platforms_json=""
+
+  # get the last element in the array
+  local last="${cplay_platforms[@]:(-1)}"
+
+  # loop through platforms in main platforms assoc array
+  for p_key in "${!cplay_platforms[@]}"; do
+
+    # is this the last platform in the loop
+    local last_platform=0
+    if [ "$last" == "${cplay_platforms[$p_key]}" ]; then
+      last_platform=1
+    fi
+
+    # build all examples for this platform
+    build_platform $p_key
+
+    # check if build failed
+    if [ $? -ne 0 ]; then
+      platforms_json="${platforms_json}$(json_platform $p_key 0 "$PLATFORM_JSON" $last_platform)"
+      exit_code=1
+    else
+      platforms_json="${platforms_json}$(json_platform $p_key 1 "$PLATFORM_JSON" $last_platform)"
+    fi
+
+  done
+
+  # exit code is opposite of json build status
+  if [ $exit_code -eq 0 ]; then
+    json_main_platforms 1 "$platforms_json"
+  else
+    json_main_platforms 0 "$platforms_json"
+  fi
+
+  return $exit_code
+
+}
+
+function build_samd_platforms()
+{
+
+  # arrays can't be exported, so we have to eval
+  eval $SAMD_PLATFORMS
+
+  # track the build status all platforms
+  local exit_code=0
+
+  # var to hold platforms
+  local platforms_json=""
+
+  # get the last element in the array
+  local last="${samd_platforms[@]:(-1)}"
+
+  # loop through platforms in main platforms assoc array
+  for p_key in "${!samd_platforms[@]}"; do
+
+    # is this the last platform in the loop
+    local last_platform=0
+    if [ "$last" == "${samd_platforms[$p_key]}" ]; then
       last_platform=1
     fi
 
