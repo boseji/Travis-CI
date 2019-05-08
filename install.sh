@@ -84,10 +84,8 @@ DEPENDENCY_OUTPUT=$(arduino --pref "boardsmanager.additional.urls=https://adafru
 if [ $? -ne 0 ]; then echo -e """$RED""\xe2\x9c\x96"; else echo -e """$GREEN""\xe2\x9c\x93"; fi
 
 # This is a hack, we have to install by hand so lets delete it
-echo "Removing ESP32 cache"
-rm -rf ~/.arduino15/packages/esp32
-echo -n "Current packages list:"
-ls ~/.arduino15/packages/
+#echo "Removing ESP32 cache"
+#rm -rf ~/.arduino15/packages/esp32
 
 echo -n "ESP32: "
 DEPENDENCY_OUTPUT=$(arduino --install-boards esp32:esp32 2>&1)
@@ -123,6 +121,9 @@ if [ $? -ne 0 ]; then echo -e """$RED""\xe2\x9c\x96"; else echo -e """$GREEN""\x
 echo -n "SET BUILD PREFERENCES: "
 DEPENDENCY_OUTPUT=$(arduino --pref "compiler.warning_level=all" --save-prefs 2>&1)
 if [ $? -ne 0 ]; then echo -e """$RED""\xe2\x9c\x96"; else echo -e """$GREEN""\xe2\x9c\x93"; fi
+
+echo -n "Current packages list:"
+ls ~/.arduino15/packages/
 
 # init the json temp var for the current platform
 export PLATFORM_JSON=""
